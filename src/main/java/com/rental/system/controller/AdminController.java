@@ -44,6 +44,9 @@ public class AdminController {
             map.put("email", user.getEmail());
             map.put("phone", user.getPhone());
             map.put("role", user.getRole());
+            map.put("monthlyRent", user.getMonthlyRent() == null ? 0 : user.getMonthlyRent());
+            map.put("depositAmount", user.getDepositAmount() == null ? 0 : user.getDepositAmount());
+            map.put("depositPaid", user.getDepositPaid() == null ? 0 : user.getDepositPaid());
             map.put("pendingCount", pending);
             map.put("completedCount", completed);
 
@@ -100,7 +103,8 @@ public class AdminController {
 
     // Payment Reject करणे
     @PutMapping("/payments/{id}/reject")
-    public ResponseEntity<?> rejectPayment(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+    public ResponseEntity<?> rejectPayment(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
         RentPayment payment = rentPaymentRepository.findById(id).orElse(null);
 
         if (payment == null) {
@@ -119,5 +123,30 @@ public class AdminController {
         rentPaymentRepository.save(payment);
 
         return ResponseEntity.ok(payment);
+    }
+
+    // User चा rent / deposit update करणे (फक्त admin)
+    @PutMapping("/users/{id}/finance")
+    public ResponseEntity<?> updateFinance(@PathVariable Long id, @RequestBody Map<String, Double> body) {
+        User user = userRepository.findById(id).orElse(null);
+
+        if (user == null) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "User not found");
+            return ResponseEntity.status(404).body(error);
+        }
+
+        if (body.containsKey("monthlyRent"))
+            user.setMonthlyRent(body.get("monthlyRent"));
+        if (body.containsKey("depositAmount"))
+            user.setDepositAmount(body.get("depositAmount"));
+        if (body.containsKey("depositPaid"))
+            user.setDepositPaid(body.get("depositPaid"));
+
+        userRepository.save(user);
+
+        Map<String, String> ok = new HashMap<>();
+        ok.put("message", "Updated");
+        return ResponseEntity.ok(ok);
     }
 }
