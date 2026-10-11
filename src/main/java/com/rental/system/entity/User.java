@@ -34,6 +34,16 @@ public class User {
 
     private String photoPath;
 
+    private Double monthlyRent;
+
+    private Double depositAmount;
+
+    private Double depositPaid;
+
+    private String occupation;
+
+    private String organizationName;
+
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER;
 

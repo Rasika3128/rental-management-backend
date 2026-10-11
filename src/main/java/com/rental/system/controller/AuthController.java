@@ -45,9 +45,13 @@ public class AuthController {
             @RequestParam("password") String password,
             @RequestParam("confirmPassword") String confirmPassword,
             @RequestParam("startDate") String startDate,
+            @RequestParam("monthlyRent") Double monthlyRent,
+            @RequestParam("depositAmount") Double depositAmount,
+            @RequestParam("occupation") String occupation,
+            @RequestParam("organizationName") String organizationName,
+            @RequestParam("depositPaid") Double depositPaid,
             @RequestParam("idProof") MultipartFile idProof,
-            @RequestParam("photo") MultipartFile photo
-    ) {
+            @RequestParam("photo") MultipartFile photo) {
         Map<String, String> error = new HashMap<>();
 
         // Basic validations
@@ -75,6 +79,11 @@ public class AuthController {
             user.setStartDate(LocalDate.parse(startDate));
             user.setIdProofPath(idProofFileName);
             user.setPhotoPath(photoFileName);
+            user.setMonthlyRent(monthlyRent);
+            user.setDepositAmount(depositAmount);
+            user.setOccupation(occupation.trim());
+            user.setOrganizationName(organizationName.trim());
+            user.setDepositPaid(depositPaid);
             user.setRole(User.Role.USER);
 
             userRepository.save(user);
