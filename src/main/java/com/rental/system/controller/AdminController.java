@@ -5,6 +5,7 @@ import com.rental.system.entity.User;
 import com.rental.system.repository.RentPaymentRepository;
 import com.rental.system.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,13 +18,16 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final RentPaymentRepository rentPaymentRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public AdminController(UserRepository userRepository, RentPaymentRepository rentPaymentRepository) {
+    public AdminController(UserRepository userRepository,
+                           RentPaymentRepository rentPaymentRepository,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.rentPaymentRepository = rentPaymentRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    // सगळ्या users ची यादी (pending/completed counts सहित)
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers() {
         List<User> users = userRepository.findAll();
@@ -56,7 +60,6 @@ public class AdminController {
         return ResponseEntity.ok(result);
     }
 
-    // एका specific user चे पूर्ण details + history
     @GetMapping("/users/{id}")
     public ResponseEntity<?> getUserDetails(@PathVariable Long id) {
         User user = userRepository.findById(id).orElse(null);
@@ -76,14 +79,12 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    // सगळे pending payments
     @GetMapping("/payments/pending")
     public ResponseEntity<?> getPendingPayments() {
         List<RentPayment> pending = rentPaymentRepository.findByStatus(RentPayment.PaymentStatus.PENDING);
         return ResponseEntity.ok(pending);
     }
 
-    // Payment Accept करणे
     @PutMapping("/payments/{id}/accept")
     public ResponseEntity<?> acceptPayment(@PathVariable Long id) {
         RentPayment payment = rentPaymentRepository.findById(id).orElse(null);
@@ -101,7 +102,6 @@ public class AdminController {
         return ResponseEntity.ok(payment);
     }
 
-    // Payment Reject करणे
     @PutMapping("/payments/{id}/reject")
     public ResponseEntity<?> rejectPayment(@PathVariable Long id,
             @RequestBody(required = false) Map<String, String> body) {
@@ -125,7 +125,6 @@ public class AdminController {
         return ResponseEntity.ok(payment);
     }
 
-    // User चा rent / deposit update करणे (फक्त admin)
     @PutMapping("/users/{id}/finance")
     public ResponseEntity<?> updateFinance(@PathVariable Long id, @RequestBody Map<String, Double> body) {
         User user = userRepository.findById(id).orElse(null);
@@ -148,5 +147,50 @@ public class AdminController {
         Map<String, String> ok = new HashMap<>();
         ok.put("message", "Updated");
         return ResponseEntity.ok(ok);
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        User user = userRepository.findById(id).orElse(null);
+        Map<String, String> res = new HashMap<>();
+
+        if (user == null) {
+            res.put("message", "User not found");
+            return ResponseEntity.status(404).body(res);
+        }
+
+        if (user.getRole() == User.Role.ADMIN) {
+            res.put("message", "Admin user cannot be deleted");
+            return ResponseEntity.badRequest().body(res);
+        }
+
+        rentPaymentRepository.deleteAll(rentPaymentRepository.findByUser(user));
+        userRepository.delete(user);
+
+        res.put("message", "User deleted");
+        return ResponseEntity.ok(res);
+    }
+
+    @PutMapping("/users/{id}/reset-password")
+    public ResponseEntity<?> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        User user = userRepository.findById(id).orElse(null);
+        Map<String, String> res = new HashMap<>();
+
+        if (user == null) {
+            res.put("message", "User not found");
+            return ResponseEntity.status(404).body(res);
+        }
+
+        String newPassword = body.get("newPassword");
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            res.put("message", "Password must be at least 6 characters");
+            return ResponseEntity.badRequest().body(res);
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword.trim()));
+        userRepository.save(user);
+
+        res.put("message", "Password reset");
+        return ResponseEntity.ok(res);
     }
 }
